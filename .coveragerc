@@ -1,0 +1,21 @@
+[run]
+branch = True
+source = 
+    blueprint
+    control
+omit =
+    */tests/*
+    */scripts/*
+    */__init__.py
+
+[report]
+show_missing = True
+precision = 2
+skip_covered = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.
+    def __repr__
+    def __str__
+    @property
+    @abstractmethod

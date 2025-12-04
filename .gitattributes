@@ -1,0 +1,71 @@
+# ================================================================
+# Stable diffs and consistent text normalization for Architech
+# ================================================================
+
+# ------------------------------
+# Python (semantic diff)
+# ------------------------------
+*.py text eol=lf diff=python
+
+# Treat type-hint stubs the same way
+*.pyi text eol=lf diff=python
+
+# ------------------------------
+# Documentation & configs
+# ------------------------------
+*.md    text eol=lf
+*.rst   text eol=lf
+*.txt   text eol=lf
+
+*.ini   text eol=lf
+*.cfg   text eol=lf
+*.toml  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+Makefile text eol=lf
+
+# ------------------------------
+# Source models, definitions
+# ------------------------------
+*.json  text eol=lf
+*.schema.json text eol=lf
+
+# ------------------------------
+# Scripts
+# ------------------------------
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# ------------------------------
+# Ignore whitespace-only diffs for these
+# (Common for notes, experiments)
+# ------------------------------
+*.md     -diff
+
+# ------------------------------
+# Binary formats
+# ------------------------------
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.tar  binary
+*.whl  binary
+
+# ------------------------------
+# Specific project directory handling
+# ------------------------------
+# Prevent venv files from appearing
+.venv/**  text eol=lf -diff
+
+# Loader engine files (text, but large diffs)
+loader/source/*.py text eol=lf diff=python
+
+# ------------------------------
+# Ensure Git never rewrites line endings back to CRLF
+# ------------------------------
+* text=auto eol=lf

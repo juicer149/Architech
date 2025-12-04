@@ -1,0 +1,66 @@
+# ------------------------------
+# Python
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Bytecode caches
+.pytest_cache/
+.mypy_cache/
+.cache/
+
+# ------------------------------
+# Test/coverage
+# ------------------------------
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ------------------------------
+# Tools / Editor
+# ------------------------------
+*.swp
+*.swo
+.idea/
+.vscode/
+*.iml
+
+# direnv
+.envrc
+.env
+
+# ------------------------------
+# Project-specific
+# ------------------------------
+
+# Local notebooks / experiments
+*.ipynb
+
+# Temporary files
+*.log
+*.tmp
+
+# Benchmark results
+scripts/*.csv
+scripts/*.log
+
+# Ignore your personal working note
+todo.md
+
+# ------------------------------
+# OS-generated
+# ------------------------------
+.DS_Store
+Thumbs.db
