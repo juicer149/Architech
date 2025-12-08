@@ -1,7 +1,6 @@
-from blueprint.codex.factory import build_codex_binding
-from blueprint.codex.models import CodexConfig, Phase
-from blueprint.codex import SET, GET
-from blueprint.pipeline.codex_pipeline import PipelineCompiler
+from dsl import PhaseTokenBase, StepChain
+from codex.models import CodexConfig, Phase, build_codex_spec
+from codex.engine import CodexEngine
 import pytest
 
 
@@ -18,14 +17,11 @@ def fb2(x):
 
 
 def test_primary_fail_then_fallback_succeeds():
-    # Section with primary fail; fallback succeeds then retry primary
-    chain = SET(strict=True) >> fail << fb1 << fb2
-    b = build_codex_binding([chain], domain="D.x", config=CodexConfig(strict=True))
-    compiler = PipelineCompiler()
-    pipes = compiler.build_pipeline(binding=b, panopticon=None)
-    stage = pipes[Phase.SET][0]
-    # Current semantics: fallback(s) run; primary retried; if it still fails,
-    # the last error propagates
+    # Section with primary fail; fallbacks would run, but raising exceptions propagates in strict mode
+    SET = PhaseTokenBase(Phase.SET)
+    chain: StepChain = SET >> fail << fb1 << fb2
+    spec = build_codex_spec((chain.to_section(),))
+    eng = CodexEngine(spec, CodexConfig(strict=True))
     with pytest.raises(ValueError):
-        stage(1)
+        eng.run_phase(Phase.SET, 1)
 

@@ -1,12 +1,14 @@
 [run]
 branch = True
 source = 
-    blueprint
-    control
+    codex
+    dsl
+    loader
 omit =
     */tests/*
     */scripts/*
     */__init__.py
+    loader/*
 
 [report]
 show_missing = True

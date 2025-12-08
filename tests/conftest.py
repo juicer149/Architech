@@ -1,9 +1,8 @@
 # tests/conftest.py
 
 import pytest
-from control.panopticon import Panopticon
-from control.capture.capture import Capture
 
-@pytest.fixture
-def pan():
-    return Panopticon(capture=Capture())
+def make_capture():
+    # Control/capture layer removed in new design.
+    # Provide a no-op factory for tests that referenced capture.
+    return None

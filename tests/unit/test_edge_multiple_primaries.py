@@ -1,6 +1,6 @@
-from blueprint.codex.factory import build_codex_binding
-from blueprint.codex.models import CodexConfig, Phase
-from blueprint.codex import SET
+from dsl import PhaseTokenBase, StepChain
+from dsl.nodes import SectionNode
+from codex.models import Phase
 
 
 def inc(x):
@@ -12,15 +12,14 @@ def dbl(x):
 
 
 def test_multiple_primary_steps_chain():
-    # Two primaries become two IR Steps in one Section
-    chain = SET(strict=True) >> inc >> dbl
-    b = build_codex_binding([chain], domain="D.x", config=CodexConfig(strict=True))
-    sec = [p for p in b.phases if p.phase is Phase.SET][0].sections[0].section
-    # Expect two steps
-    assert len(sec.steps) == 2
-    # Manual run: (x+1) then (*2)
+    # Two primaries become two StepNodes in one Cluster within a Section
+    SET = PhaseTokenBase(Phase.SET)
+    chain: StepChain = SET >> inc >> dbl
+    node: SectionNode = chain.to_section()
+    # Each primary becomes its own cluster in current DSL design
+    assert len(node.clusters) == 2
     cur = 1
-    cur = sec.steps[0].fn(cur)
-    cur = sec.steps[1].fn(cur)
+    cur = node.clusters[0].primary.fn(cur)
+    cur = node.clusters[1].primary.fn(cur)
     assert cur == 4
 

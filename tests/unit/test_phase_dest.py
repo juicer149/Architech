@@ -1,23 +1,18 @@
-from blueprint.codex.factory import build_codex_binding
-from blueprint.codex.models import CodexConfig, Phase
-from blueprint.codex import SET, GET
+from dsl import PhaseTokenBase
+from codex.models import Phase, build_codex_spec
 
 
 def idf(x):
     return x
 
 
-def test_phase_config_dest_metadata():
-    b = build_codex_binding([SET(dest="other_field") >> idf, GET() >> idf], domain="User.attr", config=CodexConfig(strict=None))
+def test_phase_sections_present_without_dest_metadata():
+    SET = PhaseTokenBase(Phase.SET)
+    GET = PhaseTokenBase(Phase.GET)
+    spec = build_codex_spec(((SET >> idf).to_section(), (GET >> idf).to_section()))
 
-    # PhaseBinding should carry dest metadata
-    set_phase_binding = [p for p in b.phases if p.phase is Phase.SET][0]
-    assert set_phase_binding.config.dest == "other_field"
-
-    # PhaseNode in IR should also carry dest in its config
-    set_phase_node = [p for p in b.codex.phases if p.phase is Phase.SET][0]
-    assert set_phase_node.config.dest == "other_field"
-
-    # And GET phase should not have dest
-    get_phase_binding = [p for p in b.phases if p.phase is Phase.GET][0]
-    assert get_phase_binding.config.dest is None
+    # Phases exist with sections; no dest metadata in new design
+    assert Phase.SET in spec.phases
+    assert Phase.GET in spec.phases
+    assert len(spec.phases[Phase.SET].sections) == 1
+    assert len(spec.phases[Phase.GET].sections) == 1

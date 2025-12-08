@@ -1,10 +1,6 @@
-from blueprint.codex.factory import build_codex_binding
-from blueprint.codex.models import CodexConfig, Phase
-from blueprint.codex.codex import Codex
-from blueprint.codex import SET, GET
-from blueprint.pipeline.codex_pipeline import PipelineCompiler
-from control.panopticon import Panopticon
-from control.capture.capture import Capture
+from dsl import PhaseTokenBase, StepChain
+from codex.models import CodexConfig, Phase, build_codex_spec
+from codex.engine import CodexEngine
 
 
 def inc(x):
@@ -16,17 +12,19 @@ def idf(x):
 
 
 def test_compile_and_run_strict_interpreted():
+    # Construct phase tokens for DSL from Codex Phase enum
+    SET = PhaseTokenBase(Phase.SET)
+    GET = PhaseTokenBase(Phase.GET)
+
     # No semantic tokens → auto strict mode
-    b = build_codex_binding([SET() >> inc, GET() >> idf], domain="D.x", config=CodexConfig(strict=None))
-    # Build pipelines using public API
-    compiler = PipelineCompiler()
-    pipelines = compiler.build_pipeline(binding=b, panopticon=None)
+    set_chain: StepChain = SET >> inc
+    get_chain: StepChain = GET >> idf
 
-    set_pipeline = pipelines[Phase.SET][0]
-    get_pipeline = pipelines[Phase.GET][0]
+    spec = build_codex_spec((set_chain.to_section(), get_chain.to_section()))
+    engine = CodexEngine(spec, CodexConfig(strict=None))
 
-    # Run SET then GET
-    value = set_pipeline(1)
+    # Run SET then GET via engine
+    value = engine.run_phase(Phase.SET, 1)
     assert value == 2
-    value = get_pipeline(value)
+    value = engine.run_phase(Phase.GET, value)
     assert value == 2

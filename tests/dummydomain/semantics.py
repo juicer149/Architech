@@ -1,16 +1,7 @@
 # tests/dummydomain/semantics.py
 
-from control.config import Principle, Praxis, Effect
+from codex.semantics import Principle, Praxis
 
-EMAIL_ERROR = Principle(
-    label="email_error",
-    praxis=Praxis.IMMEDIATE,
-    effect=Effect.RAISE,
-    exc_type=ValueError,   # test that custom exception propagation works
-)
+EMAIL_ERROR = Principle("email_error", Praxis(True, True), exc_type=ValueError)
+EMAIL_WARN = Principle("email_warn", Praxis(False, False))
 
-EMAIL_WARN = Principle(
-    label="email_warn",
-    praxis=Praxis.DEFER,
-    effect=Effect.PRINT,
-)

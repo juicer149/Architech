@@ -1,6 +1,8 @@
 # tests/dummydomain/impl/email_model.py
 
-from blueprint.codex import Codex, SET, GET
+from dsl import PhaseTokenBase
+from codex import Codex
+from codex.models import Phase
 from tests.dummydomain.semantics import EMAIL_ERROR, EMAIL_WARN
 
 
@@ -24,13 +26,15 @@ def lowercase(v):
 # --- Dummy model using Codex ---
 
 class Email:
+    # Phase tokens bound to Codex Phase enum
+    _SET = PhaseTokenBase(Phase.SET)
+    _GET = PhaseTokenBase(Phase.GET)
+
     address = Codex(
-        # SET is strict → pure Python validation, no Panopticon
-        SET(strict=True) >> to_str >> strip >> require_at | EMAIL_ERROR,
-        # GET is interpreted → Panopticon captures + WARN printed
-        GET(strict=False) >> lowercase | EMAIL_WARN,
+        _SET >> to_str >> strip >> require_at | EMAIL_ERROR,
+        _GET >> lowercase | EMAIL_WARN,
         strict=None,
-    ) 
+    )
 
     def __init__(self, addr):
         self.address = addr

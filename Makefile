@@ -4,6 +4,11 @@ PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 
+# Allow passing extra args after target name, e.g.:
+#   make loc codex dsl
+# Captures non-target words into ARGS.
+ARGS := $(filter-out $@,$(MAKECMDGOALS))
+
 # Default target
 .DEFAULT_GOAL := help
 
@@ -28,10 +33,12 @@ install: venv
 
 # Optional: core-only install (no algorithm deps)
 install-core: venv
-	$(PIP) install -e .
-
+	@echo "  make bench         Run Codex benchmark (WARMUP/ITERS/RUNS overridable)"
+	@echo "  make loc           Count LOC for folders. Usage:"
+	@echo "                     make loc codex dsl tests"
+	@echo "                     or: make loc DIRS=\"codex dsl\""
 test:
-	$(PYTEST) -v --cov=src --cov-report=term-missing
+	pytest -q --cov=codex --cov=dsl --cov=loader --cov-report=term-missing
 
 lint:
 	$(VENV)/bin/ruff check src tests_new
@@ -42,8 +49,20 @@ format:
 typecheck:
 	$(VENV)/bin/mypy src
 
+BENCH_WARMUP ?= 500
+BENCH_ITERS  ?= 2000
+BENCH_RUNS   ?= 5
 bench:
-	$(PYTHON) -m securitykit.bench.bench $(ARGS)
+	BENCH_WARMUP=$(BENCH_WARMUP) BENCH_ITERS=$(BENCH_ITERS) BENCH_RUNS=$(BENCH_RUNS) \
+	python3 scripts/benchmark_codex_vs_raw.py
+
+LOC_DIRS ?=
+loc:
+	python3 scripts/loc.py $(if $(LOC_DIRS),$(LOC_DIRS),$(ARGS))
+
+# Swallow extra words (like folder names) so Make doesn't error on them
+%:
+	@:
 
 # Clean caches, coverage data, and build artifacts
 clean:

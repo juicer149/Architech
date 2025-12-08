@@ -1,21 +1,17 @@
-from blueprint.codex.factory import build_codex_binding
-from blueprint.codex.models import CodexConfig, Phase
-from blueprint.codex import SET, GET
+from dsl import PhaseTokenBase
+from codex.models import CodexConfig, Phase, build_codex_spec
+from codex.engine import CodexEngine
+from codex import WARN
 
 
 def idf(x):
     return x
 
 
-def test_phase_strict_overrides_codex_config():
-    # Codex-level strict=False, but SET(strict=True) should win for that phase
-    b = build_codex_binding([
-        SET(strict=True) >> idf,
-        GET(strict=False) >> idf,
-    ], domain="D.x", config=CodexConfig(strict=False))
-
-    set_phase = [p for p in b.phases if p.phase is Phase.SET][0]
-    get_phase = [p for p in b.phases if p.phase is Phase.GET][0]
-
-    assert set_phase.config.strict is True
-    assert get_phase.config.strict is False
+def test_auto_detect_semantic_mode_with_principle():
+    SET = PhaseTokenBase(Phase.SET)
+    # annotate section with a Principle to trigger semantic mode when strict=None
+    set_section = (SET >> idf | WARN).to_section()
+    spec = build_codex_spec((set_section,))
+    eng = CodexEngine(spec, CodexConfig(strict=None))
+    assert eng.strict is False
