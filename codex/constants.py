@@ -1,36 +1,36 @@
 # ================================================================
-# Architech/codex/constants.py
+# architech/codex/constants.py
 # ================================================================
 """
 Default semantic presets for Codex.
 
 Responsibility
 --------------
-This module defines reusable Praxis/Principle presets such as ERROR,
-WARN, INFO, and IGNORE.
+Defines reusable Praxis/Principle presets such as ERROR, WARN, INFO,
+and IGNORE.
 
 Why separate from semantics.py?
 --------------------------------
-• semantics.py defines *what* Praxis and Principle ARE.
-• constants.py defines *how they are commonly used*.
-
-These values can be imported directly by users of Codex.
+    • semantics.py defines *what* Praxis and Principle ARE.
+    • constants.py defines *how they are commonly used*.
 """
+
 from __future__ import annotations
+
 from .semantics import Praxis, Principle
 
-# allt som ska bo i denna efter refaktorisering är DEFAULT parameters för ex:
-# DEFAULT_PRAXIS
-# DEFAULT_PRINCIPLE
-# DEFAULT_PHASE
-
-# Default praxis used when user provides only a string-semantic
+# Default praxis used when user provides only a string semantic token.
+#
+# Timing=True  → treated as cluster-level by default.
+# Action=None  → ignore, unless backends decide otherwise.
 DEFAULT_PRAXIS = Praxis(
-    timing=True,      # cluster-level
-    action=None       # ignore
+    timing=True,
+    action=None,
 )
 
-# Ska tas bort, dessa ska numera bo i architech/stdlib/codex/praxis.py
+# allt härifrån och nedåt tillhör stdlib/codex/ antingen praxis.py eller principle.py
+# enda man kunde addera hade varit att haft något för timing och action
+# kanske
 # Common praxis presets
 ABORT = Praxis(True, True)
 FATAL_P = Praxis(True, True)
@@ -38,13 +38,13 @@ WARN_P = Praxis(False, False)
 INFO_P = Praxis(False, False)
 IGNORE_P = Praxis(None, None)
 
-#denna ska bort och läggas i architech/stdlib/codex/exceptions.py
+
 class FatalError(RuntimeError):
     """Raised for fatal semantic violations."""
     pass
 
-# denna ska med bort och läggas i architech/stdlib/codex/principles.py
-# High-level presets
+
+# High-level Principle presets
 ERROR = Principle("error", ABORT, RuntimeError)
 FATAL = Principle("fatal", FATAL_P, FatalError)
 WARN = Principle("warn", WARN_P)

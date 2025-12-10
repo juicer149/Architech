@@ -1,34 +1,38 @@
 # ================================================================
-# Architech/codex/__init__.py
+# architech/codex/__init__.py
 # ================================================================
 """
 Codex — Deterministic Semantic Pipelines for Python.
 
-PHILOSOPHY
-----------
+High-level responsibilities
+---------------------------
+    • Provide a descriptor (`Codex`) for attaching pipelines to attributes.
+    • Interpret structural DSL objects (`Section`, `StepChain`) into Codex IR.
+    • Execute pipelines via a strict-first engine with optional semantics.
 
-Codex builds on four principles:
+This package intentionally separates:
 
-1. STRUCTURE BEFORE SEMANTICS  
-   The DSL expresses only structure. Codex adds meaning via Praxis +
-   Principle.
+    - DSL (structure)       → architech.dsl
+    - IR models             → codex.models
+    - Semantics vocabulary  → codex.semantics / codex.constants
+    - Execution engine      → codex.engine
 
-2. MINIMAL BOOLEAN SEMANTICS  
-   A Principle is just:
-       Praxis(timing=True/False/None, action=True/False/None)
+Codex also defines the canonical SET/GET phase tokens for use with the DSL:
 
-   which controls WHEN and HOW semantic violations are handled.
+    from codex import SET, GET, Codex
 
-3. STRICT-FIRST EXECUTION  
-   First run everything in pure Python.
-   If something fails and semantics are enabled, replay sections with
-   semantic handling.
-
-4. ZERO OVERHEAD DESIGN  
-   No Panopticon, no capture layer, no global effect engines.
+    class User:
+        name = Codex(
+            SET >> normalize >> validate @ ERROR,
+            GET >> normalize,
+        )
 """
 
-from .semantics import Praxis, Principle
+from __future__ import annotations
+
+from dsl import PhaseToken
+
+from .semantics import Praxis, Principle, normalize_principle
 from .constants import (
     DEFAULT_PRAXIS,
     ERROR,
@@ -36,20 +40,46 @@ from .constants import (
     WARN,
     INFO,
     IGNORE,
+    ABORT,
+    FATAL_P,
+    WARN_P,
+    INFO_P,
+    IGNORE_P,
 )
-
-from .codex import Codex
 from .models import Phase
+from .codex import Codex
+
+# ------------------------------------------------------------------
+# Canonical phase tokens for Codex
+# ------------------------------------------------------------------
+
+#: Phase token for write/update operations.
+SET = PhaseToken(Phase.SET)
+
+#: Phase token for read/access operations.
+GET = PhaseToken(Phase.GET)
+
 
 __all__ = [
+    # Core descriptor / phases
     "Codex",
     "Phase",
+    "SET",
+    "GET",
+    # Semantics
     "Praxis",
     "Principle",
+    "normalize_principle",
+    # Principles / praxis presets
     "DEFAULT_PRAXIS",
     "ERROR",
     "FATAL",
     "WARN",
     "INFO",
     "IGNORE",
+    "ABORT",
+    "FATAL_P",
+    "WARN_P",
+    "INFO_P",
+    "IGNORE_P",
 ]

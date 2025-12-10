@@ -1,20 +1,26 @@
 # ================================================================
-# Architech/codex/codex.py
+# architech/codex/codex.py
 # ================================================================
 """
 Codex — User-facing descriptor API.
 
 Responsibility
 --------------
-Codex is the public interface for defining semantic pipelines on class
-attributes. A Codex instance:
+Codex is the public interface for defining semantic pipelines on
+class attributes. A Codex instance:
 
     1. Stores DSL sections (SET/GET pipelines)
     2. Performs strict-first evaluation when the attribute is read/written
     3. Delegates execution to CodexEngine
     4. Works as a descriptor:
+
+            from codex import Codex, SET, GET, ERROR
+
             class X:
-                email = Codex(SET >> normalize >> validate | ERROR)
+                email = Codex(
+                    SET >> normalize >> validate @ ERROR,
+                    GET >> normalize,
+                )
 
 Lifecycle
 ---------
@@ -24,29 +30,31 @@ Lifecycle
     • _get_engine    → builds CodexSpec + CodexEngine on first use
 
 Codex itself holds **no semantics**. It only:
+
     - Builds the spec
     - Chooses strict-mode or semantic-mode
     - Routes calls to the engine
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 
-from dsl import StepChain, SectionNode
+from dsl import StepChain, Section
 from .models import (
     Phase,
     build_codex_spec,
     CodexConfig,
-#    CodexSpec,
 )
 from .engine import CodexEngine
 
 
-# Normalize user input from DSL
-def _norm(x):
+# Normalize user input from DSL or raw Section
+def _norm(x: Any) -> Section:
     if isinstance(x, StepChain):
         return x.to_section()
-    if isinstance(x, SectionNode):
+    if isinstance(x, Section):
         return x
     raise TypeError(f"Invalid Codex element: {x!r}")
 
@@ -54,6 +62,7 @@ def _norm(x):
 # ================================================================
 # Codex descriptor
 # ================================================================
+
 @dataclass
 class Codex:
     """
@@ -62,53 +71,58 @@ class Codex:
     Parameters
     ----------
     *sections:
-        DSL objects (StepChain or SectionNode)
+        DSL objects (StepChain or Section)
 
     strict:
-        - True  → disable semantics (strict mode)
+        - True  → disable semantics (strict mode only)
         - False → enable semantics
         - None  → auto: enable semantics if any Principle appears
 
     default:
         Default value returned before attribute is first set.
     """
+
     _sections: Tuple[Any, ...]
     _strict: Optional[bool]
     _default: Any
     _name: Optional[str] = None
     _engine: Optional[CodexEngine] = None
 
-    def __init__(self, *sections: Any, strict=None, default=None):
+    def __init__(self, *sections: Any, strict: Optional[bool] = None, default: Any = None):
         self._sections = tuple(sections)
         self._strict = strict
         self._default = default
 
     # ---------------- descriptor -----------------
 
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name: str):
         self._name = name
-        # Auto-inject a minimal __init__ for classes without one so that
+
+        # Optional: inject a minimal __init__ for classes without one so that
         # a single positional argument can initialize this Codex-backed field.
+        #
         # This preserves user-defined __init__ if present.
         default_init = object.__init__
         owner_init = getattr(owner, "__init__", default_init)
         if owner_init is default_init:
+
             def __init__(inst, v=None, **kwargs):
-                # Use object.__setattr__ to support frozen dataclasses.
                 if v is not None:
-                    object.__setattr__(inst, name, v)
-                # Allow keyword initialization for other attributes
+                    # Descriptor __set__ will run, which enforces Codex pipeline.
+                    setattr(inst, name, v)
                 for k, val in kwargs.items():
-                    object.__setattr__(inst, k, val)
+                    setattr(inst, k, val)
+
             owner.__init__ = __init__
 
-    def _attr(self):
+    def _attr(self) -> str:
         if self._name is None:
             raise RuntimeError("Codex used before __set_name__.")
         return self._name
 
-    def __get__(self, inst, owner):  # "owner" is not accessed
+    def __get__(self, inst, owner=None):
         if inst is None:
+            # Accessed on the class, return descriptor itself
             return self
         eng = self._get_engine()
         internal = inst.__dict__.get(self._attr(), self._default)
@@ -135,9 +149,10 @@ class Codex:
 
     # ---------------- composition ----------------
 
-    def __add__(self, other):
+    def __add__(self, other: Any):
         """
         Merge two Codex definitions into one.
+
         Strict-mode is resolved by AND/OR rules:
             True + True   → True
             False + ?     → False

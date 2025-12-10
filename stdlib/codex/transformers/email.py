@@ -1,5 +1,5 @@
 # ================================================================
-# Architech/stdlib/codex/transformers/email.py
+# stdlib/codex/transformers/email.py
 # ================================================================
 """
 Email transformers for Codex stdlib.
@@ -7,11 +7,18 @@ Email transformers for Codex stdlib.
 
 from __future__ import annotations
 
+from typing import Any
 
-def normalize_email(v):
+
+def normalize_email(v: Any) -> Any:
     """
-    Normalize email by applying strip + lower.
+    Normalize email by strip + lower.
 
-    (More advanced normalization may be added later.)
+    Success:
+        - return normalized string
+
+    Failure:
+        - never fails here; use validators.email.is_email / require_at
+          for validation.
     """
     return str(v).strip().lower()

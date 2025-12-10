@@ -49,9 +49,9 @@ format:
 typecheck:
 	$(VENV)/bin/mypy src
 
-BENCH_WARMUP ?= 500
-BENCH_ITERS  ?= 2000
-BENCH_RUNS   ?= 5
+BENCH_WARMUP ?= 3000
+BENCH_ITERS  ?= 30000
+BENCH_RUNS   ?= 7 
 bench:
 	BENCH_WARMUP=$(BENCH_WARMUP) BENCH_ITERS=$(BENCH_ITERS) BENCH_RUNS=$(BENCH_RUNS) \
 	python3 scripts/benchmark_codex_vs_raw.py

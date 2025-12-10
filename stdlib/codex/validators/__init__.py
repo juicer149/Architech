@@ -1,18 +1,19 @@
 # ================================================================
-# Architech/stdlib/codex/validators/__init__.py
+# stdlib/codex/validators/__init__.py
 # ================================================================
 """
 Stdlib validators for Codex.
 
 Convention:
     - Validator functions return either:
-        • a new value (success)
-        • the same value (success)
-        • an Exception instance (semantic failure)
-    - They normally do *not* raise, because Codex interprets
-      “return Exception” as semantic violation.
+        • None            (success, no change)
+        • a new value     (success, modified)
+        • an Exception    (semantic failure)
 
-More specialized validators live in:
+    - They normally do NOT raise; Codex treats "return Exception"
+      as a signal for semantic violations in semantic mode.
+
+More specialised validators live in:
     - numbers.py
     - text.py
     - email.py
@@ -20,7 +21,7 @@ More specialized validators live in:
 
 from .numbers import is_int, positive, in_range
 from .text import non_empty
-from .email import require_at
+from .email import require_at, is_email
 
 __all__ = [
     "is_int",
@@ -28,4 +29,5 @@ __all__ = [
     "in_range",
     "non_empty",
     "require_at",
+    "is_email",
 ]

@@ -1,84 +1,88 @@
 # ================================================================
-# Architech/stdlib/codex/__init__.py
+# stdlib/codex/__init__.py
 # ================================================================
 """
-Stdlib for Codex — reusable semantic building blocks.
+Stdlib layer on top of Codex + DSL.
 
-This package lives *above* the core module `architech/codex/` and
-exposes three things:
+Responsibility
+--------------
+Provides:
 
-1. Semantic vocabulary
-   - Time/action constants (CLUSTER, PHASE, CODEX, RAISE, PRINT, IGNORE)
-   - Praxis presets: ABORT, WARN, INFO, SILENT
-   - Principles: ERROR, FATAL, WARN_P, INFO_P, IGNORE_P
+    • Canonical phase tokens:
+         SET, GET
 
-2. Phase tokens
-   - SET  → pipelines executed on assignment (Phase.SET)
-   - GET  → pipelines executed on attribute read (Phase.GET)
+    • Ready-to-use Codex descriptor:
+         StdCodex
 
-3. StdCodex + ready-made pipelines
-   - StdCodex: thin wrapper around `codex.Codex` for stdlib usage
-   - (Optional) prebuilt Codex building blocks in `stdlib/codex/codex.py`
+    • Common semantic presets (re-exported from codex.constants):
+         ERROR, FATAL, WARN, INFO, IGNORE
+         DEFAULT_PRAXIS
+         ABORT, FATAL_P, WARN_P, INFO_P, IGNORE_P
 
-The goals are:
-    - keep core-Codex minimal and semantics-agnostic
-    - let stdlib/codex provide “batteries included” semantics
-    - allow usage like:
+    • Frequently used composite pipelines:
+         IS_INT, POSITIVE, IN_RANGE, NON_EMPTY_STR,
+         NORMALIZED_TEXT, CLEAN_EMAIL
 
-        from stdlib.codex import SET, GET, ERROR
-        from stdlib.codex.stdlib_codex import StdCodex
-
-        class User:
-            age = StdCodex(SET >> to_int | ERROR)
-
-without needing to care about engine/IR details.
+    • Primitive validators / transformers under:
+         stdlib.codex.validators.*
+         stdlib.codex.transformers.*
 """
 
-from .praxis import (
-    CLUSTER,
-    PHASE,
-    CODEX,
-    RAISE,
-    PRINT,
-    IGNORE,
-    ABORT,
-    WARN,
-    INFO,
-    SILENT,
+from __future__ import annotations
+
+from .phases import SET, GET
+from .stdlib_codex import StdCodex
+from .codex import (
+    IS_INT,
+    POSITIVE,
+    IN_RANGE,
+    NON_EMPTY_STR,
+    NORMALIZED_TEXT,
+    CLEAN_EMAIL,
 )
 
-from .principles import (
+from codex.semantics import Praxis, Principle
+from codex.constants import (
+    DEFAULT_PRAXIS,
     ERROR,
     FATAL,
+    WARN,
+    INFO,
+    IGNORE,
+    ABORT,
+    FATAL_P,
     WARN_P,
     INFO_P,
     IGNORE_P,
 )
 
-from .phases import SET, GET
-from .stdcodex import StdCodex
-
 __all__ = [
-    # Praxis constants
-    "CLUSTER",
-    "PHASE",
-    "CODEX",
-    "RAISE",
-    "PRINT",
-    "IGNORE",
-    "ABORT",
-    "WARN",
-    "INFO",
-    "SILENT",
-    # Principles
+    # phases
+    "SET",
+    "GET",
+    # core Codex re-exports
+    "StdCodex",
+    "Praxis",
+    "Principle",
+    # principles
+    "DEFAULT_PRAXIS",
     "ERROR",
     "FATAL",
+    "WARN",
+    "INFO",
+    "IGNORE",
+    # praxis presets
+    "ABORT",
+    "FATAL_P",
     "WARN_P",
     "INFO_P",
     "IGNORE_P",
-    # Phase tokens
-    "SET",
-    "GET",
-    # Stdlib Codex wrapper
-    "StdCodex",
+    # composite stdlib codices
+    "IS_INT",
+    "POS_INT",
+    "POSITIVE",          # alias, see below
+    "IN_RANGE",
+    "NON_EMPTY_STR",
+    "NORMALIZED_TEXT",
+    "CLEAN_EMAIL",
 ]

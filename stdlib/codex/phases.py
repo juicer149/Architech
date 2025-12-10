@@ -1,27 +1,31 @@
 # ================================================================
-# Architech/stdlib/codex/phases.py
+# stdlib/codex/phases.py
 # ================================================================
 """
-Codex-specific phase tokens for the DSL: SET and GET.
+Canonical phase tokens for stdlib.
 
-These bind together:
-    - DSL PhaseTokenBase
-    - Codex Phase enum (Phase.SET / Phase.GET)
+Responsibility
+--------------
+Expose ready-made `SET` and `GET` tokens based on Codex Phase enum.
 
-Example:
-    from stdlib.codex import SET, GET, StdCodex, ERROR
+These are thin wrappers around the DSL PhaseToken. They are used as
+the entrypoints into the DSL:
 
-    class User:
-        age = StdCodex(SET >> to_int | ERROR)
+    from stdlib.codex import SET, GET
+
+    name_rules = StdCodex(
+        (SET >> strip >> non_empty) @ WARN,
+        (GET >> normalize) @ INFO,
+    )
 """
 
 from __future__ import annotations
 
-from dsl import PhaseTokenBase
+from dsl import PhaseToken
 from codex.models import Phase
 
-# Phase-level DSL tokens specific to Codex:
-#   SET → executed on attribute assignment (Phase.SET)
-#   GET → executed on attribute read (Phase.GET)
-SET: PhaseTokenBase = PhaseTokenBase(Phase.SET)
-GET: PhaseTokenBase = PhaseTokenBase(Phase.GET)
+# Stdlib phase tokens used everywhere
+SET = PhaseToken(Phase.SET)
+GET = PhaseToken(Phase.GET)
+
+__all__ = ["SET", "GET"]

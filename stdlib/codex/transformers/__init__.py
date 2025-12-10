@@ -1,12 +1,15 @@
 # ================================================================
-# Architech/stdlib/codex/transformers/__init__.py
+# stdlib/codex/transformers/__init__.py
 # ================================================================
 """
 Stdlib transformers for Codex.
 
 Transformers:
-    - modify the value
-    - *raise* normally on unexpected problems (hard failure)
+
+    - change the value
+    - may return None (no change) or a new value
+    - should return Exception on soft failure
+      (rare; usually validation is in validators/*)
 
 Validation logic should live in `validators/`.
 """

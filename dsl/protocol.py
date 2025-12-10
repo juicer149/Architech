@@ -2,14 +2,22 @@
 # architech/dsl/protocol.py
 # ================================================================
 """
-Protocols describing what the DSL expects from backend phase keys
-and callable step functions.
+Protocols and type aliases describing what the DSL expects from
+backend phase keys and step objects.
 
-The DSL is intentionally generic and does not know about Codex semantics.
+The DSL itself is intentionally generic and does not know about Codex
+or any other backend semantics. It only assumes:
+
+    - there is some notion of a *phase key*
+    - steps are opaque objects that backends know how to interpret
+
+Backends are free to map these abstractions onto enums, callables,
+data classes, or any other internal representations.
 """
 
 from __future__ import annotations
-from typing import Any, Callable, Protocol, runtime_checkable
+
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -18,23 +26,25 @@ class DSLPhaseKey(Protocol):
     Minimal interface representing a “phase”.
 
     Must support:
+
         - hashing
         - equality
         - stringification
 
-    Backends (e.g. Codex) typically map SET/GET to enum values satisfying this.
+    Backends (e.g. Codex) typically map SET/GET to enum values
+    satisfying this protocol.
     """
-    def __str__(self) -> str:
+
+    def __str__(self) -> str:  # pragma: no cover - protocol stub
         ...
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover - protocol stub
         ...
 
-# thought:
-# funderar krin om dsl ens behöver veta att detta är en callable per se
-# alltså att detta ansvar hör till Codex backend?
-# att det i DSL är en Any bara och att Codex backend ansvarar för att
-# det är en callable som tar en input och ger en output?
-StepFn = Callable[[Any], Any]
-# ny:
-# Step = Any # kanske även lägga denna i något som dsl/annotations.py?
+
+# In the generic DSL, a “step” is just an opaque object that the
+# backend understands. It does *not* have to be callable.
+#
+# For Codex, the natural choice is a unary callable, but the
+# core DSL does not enforce that.
+Step = Any

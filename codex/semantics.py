@@ -1,5 +1,5 @@
 # ================================================================
-# Architech/codex/semantics.py
+# architech/codex/semantics.py
 # ================================================================
 """
 Semantic vocabulary for Codex.
@@ -7,22 +7,23 @@ Semantic vocabulary for Codex.
 Responsibility
 --------------
 Defines the *meaning* attached to validation/transform steps:
-    • Praxis  → timing (when) + action (how)
+
+    • Praxis    → timing (when) + action (how)
     • Principle → label + praxis + optional exception type
 
-This is pure semantic data. No execution logic and no Codex dependency.
+This module is pure semantic data. No descriptor or engine logic.
 """
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional, Type
 
-# fundrar även över denna filen, den heter semantics.py men kanske borde ändra namn
-# till något som typ rules.py eller models.py eller något
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional, Type, Any
+
 
 @dataclass(frozen=True, slots=True)
 class Praxis:
     """
-    Minimal semantic control:
+    Minimal semantic control flags.
 
     timing:
         True  → cluster-level (immediate flush)
@@ -34,8 +35,7 @@ class Praxis:
         False → print violation
         None  → ignore violation
     """
-    # båda dessa borde vara = DEFAULT_TIMING och = DEFAULT_ACTION
-    # dessa båda ska bo i constants.py
+
     timing: bool | None = None
     action: bool | None = None
 
@@ -43,7 +43,7 @@ class Praxis:
 @dataclass(frozen=True, slots=True)
 class Principle:
     """
-    A semantic principle:
+    A semantic principle.
 
     Attributes
     ----------
@@ -56,26 +56,36 @@ class Principle:
     exc_type:
         Exception type used when action=True (raise).
     """
-    # även dessa borde ha defaults från constants.py
+
     label: str
-    praxis: Praxis  # skulle kunna vara = Praxis() då via att den har default där
-    exc_type: Optional[Type[BaseException]] = None  # ett default exception
+    praxis: Praxis
+    exc_type: Optional[Type[BaseException]] = None
 
     def effective_exc_type(self) -> Type[BaseException]:
+        """
+        Return the effective exception type for this principle.
+        """
         return self.exc_type or RuntimeError
 
 
-def normalize_principle(obj):
+def normalize_principle(obj: Any) -> Optional[Principle]:
     """
-    Normalize semantic tokens coming from DSL:
+    Normalize semantic tokens coming from the DSL:
+
         None       → None
         Principle  → itself
-        str        → Principle(label=str, praxis=DEFAULT)
+        str        → Principle(label=str, praxis=DEFAULT_PRAXIS)
+
+    The actual DEFAULT_PRAXIS is defined in codex.constants.
+    To avoid circular imports, we import lazily when needed.
     """
     if obj is None:
         return None
     if isinstance(obj, Principle):
         return obj
     if isinstance(obj, str):
-        return Principle(obj, Praxis())
+        # Lazy import to break circular dependency.
+        from .constants import DEFAULT_PRAXIS  # type: ignore
+
+        return Principle(obj, DEFAULT_PRAXIS)
     raise TypeError(f"Cannot normalize semantic token {obj!r}")

@@ -4,109 +4,126 @@
 """
 Pure structural DSL nodes independent of any specific backend.
 
-These nodes form a small AST-like model that backends (such as Codex)
-can consume and turn into their own IR and executable pipelines.
+This module defines:
 
-Hierarchy
----------
+    - Relation: structural relation between tokens
+    - StepToken: atomic pipeline element
+    - Section: phase-specific collection of clusters
 
-    SectionNode
-        → phase: DSLPhaseKey
-        → clusters: ClusterNode[]
+The DSL's job is purely structural:
 
-    ClusterNode
-        → primary: StepNode
-        → fallbacks: StepNode[]
-
-    StepNode
-        → fn: StepFn
-
-Semantics
----------
-
-The DSL itself is *semantics-free*:
-
-    - It does not know what a "Principle" is.
-    - It does not interpret "semantic tokens".
+    - It does not know what a “Principle” is.
+    - It does not interpret semantic tokens.
     - It does not decide control flow or validation semantics.
 
-Instead, SectionNode simply holds an opaque `semantic` attribute
-(backends may use it as a Principle/Praxis token, label, policy, etc.).
+Backends (such as Codex) consume these structures and map them to
+their own IR and execution semantics.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Any, Tuple
 
-from .protocol import DSLPhaseKey, StepFn
+from .protocol import DSLPhaseKey, Step
+
+
+class Relation(Enum):
+    """
+    Structural relation of a token inside a cluster.
+
+    PRIMARY
+        The main token in the logical chain.
+
+    FALLBACK
+        A fallback alternative that is considered when some failure
+        condition occurs for a PRIMARY token. What “failure” means
+        is backend-defined (e.g., returning an Exception, raising, etc).
+
+    OR
+        An alternative that is considered as “one of several acceptable
+        options” (e.g. first success wins), again backend-defined.
+    """
+
+    PRIMARY = auto()
+    FALLBACK = auto()
+    OR = auto()
 
 
 @dataclass(frozen=True, slots=True)
-class StepNode:
-    """Leaf node representing a single callable pipeline step."""
-    # om man då inte har StepFn definierad som callable
-    # hade dsl kunnat vara helt oberoende av implementation?
-    # att i dsl så är detta bara step: Any
-    fn: StepFn
-    # step: Step
+class StepToken:
+    """
+    Atomic structural token used by the DSL.
+
+    Attributes
+    ----------
+    value:
+        Opaque payload. The DSL does not interpret this. Common choices:
+
+            - a callable step
+            - a backend-specific configuration object
+            - a symbolic rule identifier
+            - any other object meaningful to the backend
+
+    relation:
+        Structural relation of this token within its cluster
+        (PRIMARY, FALLBACK, OR).
+
+    semantic:
+        Optional opaque metadata attached to this token only.
+        Backends are free to interpret this as “semantic policy”,
+        “label”, “Principle”, etc.
+    """
+
+    value: Step
+    relation: Relation = Relation.PRIMARY
+    semantic: Any | None = None
+
+
+# A cluster is a tuple of StepToken objects.
+#
+# The DSL enforces *no* additional invariants at this level beyond
+# structural ordering. Backends may choose to interpret the first
+# token as PRIMARY and the rest as FALLBACK/OR according to each
+# token's `relation`.
+Cluster = Tuple[StepToken, ...]
+
+
+# A sequence of clusters belonging to a single phase/section.
+Clusters = Tuple[Cluster, ...]
 
 
 @dataclass(frozen=True, slots=True)
-class ClusterNode:
-# @dataclass(frozen=True, slots=True)
-# class SequenceNode:
+class Section:
     """
-    A cluster of one primary step with zero or more fallback steps.
+    Phase-specific chain of clusters with an optional semantic token.
 
-    Backends define what “failure” means for primary steps (returning an
-    Exception, raising, sentinel value etc.). The DSL only expresses structure.
-    """
-    primary: StepNode
-    # byta namn på fallbacks till secondary eller alternatives? 
-    # alternatives låter mer neutralt och kan då användas av ex nya implementeringen av:
-    # or dvs SET >> f1 | f2 @ ERROR
-    # alternativt om för or att man byter primary att vara en Tuple[StepNode, ...]
-    # sedan hör det till backend att applicera vad nu en step är, som i codex är en callable
-    # via att låta primary istället vara Tuple[StepNode, ...], kanske inte ens behöver 
-    # En klass för StepNode då, utan att användaren kan ange vad en Step är,
-    # cluster är därmed antingen ett step eller flera steps.
-    # dsl skulle ansvara då endast logik som ">>", "<<", "|" och "@" och hur det
-    # hör till varandra för att skapa ett cluster av steps, dvs att >> betyder ett nytt 
-    # cluster, dvs en ny tuple innehållande minst ett step, och alternativt
-    # flera steps i en tuple, och beroende på om den använder "<<" eller "|" avgör
-    # relationen mellan steppen i tuplen. >> betyder alltså alltid nytt cluster.
-    # och @ betyder alltid att inga fler cluster efter detta för denna phase/section, och att
-    # @ ger metadata/rules till alla clusters i den sectionen.
-    fallbacks: Tuple[StepNode, ...] = ()
+    Example (DSL):
 
-    #ny:
-    # primary: Step
-    # or: Tuple[Step, ...] = ()
-    # fallbacks: Tuple[Step, ...] = ()
+        SET >> f1 << fb1 | fb2 >> f2 | f2b @ semantic_token
 
+    Becomes structurally:
 
-@dataclass(frozen=True, slots=True)
-class SectionNode:
-    """
-    A phase-specific chain of clusters with an optional semantic token.
-
-    Example:
-
-        SET >> f1 << fb1 << fb2 >> f2 | semantic_token
-
-    Becomes:
-
-        SectionNode(
+        Section(
             phase=SET.key,
-            clusters=[
-                ClusterNode(primary=f1, fallbacks=[fb1, fb2]),
-                ClusterNode(primary=f2)
-            ],
+            clusters=(
+                (
+                    StepToken(value=f1,  relation=Relation.PRIMARY),
+                    StepToken(value=fb1, relation=Relation.FALLBACK),
+                    StepToken(value=fb2, relation=Relation.FALLBACK),
+                ),
+                (
+                    StepToken(value=f2,  relation=Relation.PRIMARY),
+                    StepToken(value=f2b, relation=Relation.OR),
+                ),
+            ),
             semantic=semantic_token,
         )
 
     The DSL does not interpret `semantic`. Backends are free to.
     """
+
     phase: DSLPhaseKey
-    clusters: Tuple[ClusterNode, ...]
+    clusters: Clusters
     semantic: Any | None = None
