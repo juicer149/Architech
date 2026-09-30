@@ -35,3 +35,6 @@ clean:
 	rm -rf .pytest_cache .coverage htmlcov
 
 .PHONY: help install test bench loc clean
+
+bench-attr:
+	PYTHONPATH=. $(PYTHON) scripts/bench_attr.py

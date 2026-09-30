@@ -123,6 +123,22 @@ Python's operator precedence is fixed, so:
 - `|` binds looser than `>>`. `SET >> a | b >> c` fails with a `TypeError`;
   write `(SET >> a | b) >> c`.
 
+## Performance
+
+Valid data is assumed to be the common case, so that is what is fast.
+A phase made only of plain steps is flattened into a single loop when
+the class is defined; a valid assignment costs well under a
+microsecond, in the same range as pydantic's `validate_assignment`.
+
+Failures cost more on purpose. The phase is re-run through the full
+engine to apply severity, fallbacks and alternatives and to build the
+message. Returning an exception from a step is cheaper than raising
+one, which is why returning is the convention.
+
+```
+(paste the output of `make bench-attr` here)
+```
+
 ## Direction
 
 The goal for v4 is to let a data object describe a whole flow: raw
