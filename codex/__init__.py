@@ -2,84 +2,80 @@
 # architech/codex/__init__.py
 # ================================================================
 """
-Codex — Deterministic Semantic Pipelines for Python.
+Codex — execution and routing engine for Architech DSL.
 
-High-level responsibilities
----------------------------
-    • Provide a descriptor (`Codex`) for attaching pipelines to attributes.
-    • Interpret structural DSL objects (`Section`, `StepChain`) into Codex IR.
-    • Execute pipelines via a strict-first engine with optional semantics.
+This package provides stable, user-facing concepts only.
 
-This package intentionally separates:
+Exposed concepts
+----------------
+• Codex
+    Descriptor / callable that binds DSL Sections to execution.
 
-    - DSL (structure)       → architech.dsl
-    - IR models             → codex.models
-    - Semantics vocabulary  → codex.semantics / codex.constants
-    - Execution engine      → codex.engine
+• Phase
+    Canonical execution phases (SET / GET / DELETE).
 
-Codex also defines the canonical SET/GET phase tokens for use with the DSL:
+• Principle / Praxis
+    Semantic metadata attached via the DSL (@ operator).
 
-    from codex import SET, GET, Codex
+• Output
+    Declarative routing policy for values and exceptions.
 
-    class User:
-        name = Codex(
-            SET >> normalize >> validate @ ERROR,
-            GET >> normalize,
-        )
+• Effect / Timing
+    Enumerations describing WHAT happens and WHEN it happens.
+
+Internal layers (compiler/, runtime/, ir/) are intentionally hidden.
 """
 
 from __future__ import annotations
 
-from dsl import PhaseToken
+# ----------------------------------------------------------------
+# Core user-facing objects
+# ----------------------------------------------------------------
 
-from .semantics import Praxis, Principle, normalize_principle
-from .constants import (
-    DEFAULT_PRAXIS,
-    ERROR,
-    FATAL,
-    WARN,
-    INFO,
-    IGNORE,
-    ABORT,
-    FATAL_P,
-    WARN_P,
-    INFO_P,
-    IGNORE_P,
-)
-from .models import Phase
 from .codex import Codex
+from .ir.phase import Phase
 
-# ------------------------------------------------------------------
-# Canonical phase tokens for Codex
-# ------------------------------------------------------------------
+# ----------------------------------------------------------------
+# Semantic primitives
+# ----------------------------------------------------------------
 
-#: Phase token for write/update operations.
-SET = PhaseToken(Phase.SET)
+from .ir.semantics import Principle, Praxis
+from .ir.output import Output
+from .ir.effect import Effect
+from .ir.timing import Timing
 
-#: Phase token for read/access operations.
-GET = PhaseToken(Phase.GET)
+# ----------------------------------------------------------------
+# Language-level presets (user convenience)
+# ----------------------------------------------------------------
 
+from .lang import (
+    ERROR,
+    WARNING,
+    WRITE,
+    DROP,
+)
+
+# ----------------------------------------------------------------
+# Public API
+# ----------------------------------------------------------------
 
 __all__ = [
-    # Core descriptor / phases
+    # core
     "Codex",
     "Phase",
-    "SET",
-    "GET",
-    # Semantics
-    "Praxis",
+
+    # semantics
     "Principle",
-    "normalize_principle",
-    # Principles / praxis presets
-    "DEFAULT_PRAXIS",
+    "Praxis",
+
+    # output
+    "Output",
+    "Effect",
+    "Timing",
+
+    # lang presets
     "ERROR",
-    "FATAL",
-    "WARN",
-    "INFO",
-    "IGNORE",
-    "ABORT",
-    "FATAL_P",
-    "WARN_P",
-    "INFO_P",
-    "IGNORE_P",
+    "WARNING",
+    "WRITE",
+    "DROP",
 ]

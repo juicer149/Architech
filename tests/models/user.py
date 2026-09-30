@@ -1,71 +1,69 @@
-# ================================================================
 # tests/models/user.py
-# ================================================================
-
 from __future__ import annotations
 
-from stdlib.codex import (
-    StdCodex,
-    SET,
-    GET,
-    ERROR,
-    WARN,
-    INFO,
-    IS_INT,
-    POSITIVE,
-    IN_RANGE,
-    CLEAN_EMAIL,
+from typing import Any
+
+from dsl import PhaseToken
+from codex import Codex
+from codex.ir.phase import Phase
+from codex.lang import ERROR, WRITE_SELF, WRITE_RETURN
+
+# ------------------------------------------------------------
+# Phase tokens (user-facing DSL)
+# ------------------------------------------------------------
+
+SET = PhaseToken(Phase.SET)
+GET = PhaseToken(Phase.GET)
+
+# ------------------------------------------------------------
+# Step functions (pure, boring, explicit)
+# ------------------------------------------------------------
+
+def strip(value: Any) -> Any:
+    if isinstance(value, str):
+        return value.strip()
+    return value
+
+def non_empty(value: Any) -> Any:
+    if value == "":
+        return ValueError("empty string not allowed")
+    return value
+
+def to_lower(value: Any) -> Any:
+    if isinstance(value, str):
+        return value.lower()
+    return value
+
+def must_be_int(value: Any) -> Any:
+    if isinstance(value, int):
+        return value
+    return ValueError("not an int")
+
+# ------------------------------------------------------------
+# Codex pipelines
+# ------------------------------------------------------------
+
+NAME = Codex(
+    # SET: strip + require non-empty
+    (SET >> strip >> non_empty) @ ERROR,
+    # GET: normalize
+    (GET >> to_lower),
 )
-from stdlib.codex.validators.text import non_empty
-from stdlib.codex.transformers.text import strip, normalize
 
-
-# ---------------------------------------------------------------
-# User.name rules
-# ---------------------------------------------------------------
-#
-# - SET: strip whitespace, require non-empty (WARN-level)
-# - GET: normalize to lowercase (INFO-level)
-#
-NAME_RULES = StdCodex(
-    (SET >> strip >> non_empty) @ WARN,
-    (GET >> normalize) @ INFO,
-    default="",
+AGE = Codex(
+    (SET >> must_be_int) @ ERROR,
 )
 
+# ------------------------------------------------------------
+# Model
+# ------------------------------------------------------------
 
-# ---------------------------------------------------------------
-# User.age rules
-# ---------------------------------------------------------------
-#
-# - Must be int-like         (IS_INT)
-# - Must be positive         (POSITIVE)
-# - Must be within range     (0–150)
-#
-# We compose existing stdlib Codex pipelines instead of nesting them
-# as steps. The __add__ on Codex merges sections.
-#
-AGE_RULES = IS_INT + POSITIVE + IN_RANGE(0, 150)
-
-
-# ---------------------------------------------------------------
-# User.email rules
-# ---------------------------------------------------------------
-EMAIL_RULES = CLEAN_EMAIL
-
-
-# ---------------------------------------------------------------
-# User model
-# ---------------------------------------------------------------
 class User:
-    name = NAME_RULES
-    age = AGE_RULES
-    email = EMAIL_RULES
+    name = NAME
+    age = AGE
 
-    def __init__(self, name=None, age=None, email=None):
+    def __init__(self, *, name=None, age=None):
         if name is not None:
             self.name = name
         if age is not None:
             self.age = age
-        if email is not None:
-            self.email = email

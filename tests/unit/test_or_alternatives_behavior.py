@@ -1,29 +1,34 @@
-from codex.engine import CodexEngine
-from codex.models import CodexConfig, build_codex_spec, Phase, SectionSpec, ClusterSpec, PhaseSpec
+from dsl import Section, StepToken, Relation
+from codex.compiler.compile import compile_sections
+from codex.ir.phase import Phase
+from codex.runtime.engine import Engine
 
 
-def fail(x):
-    return ValueError("fail")
+def fail_exc(x):
+    # return an exception object = semantic failure
+    return ValueError("primary failed")
 
 
-def alt_ok(x):
-    return f"alt:{x}"
+def alt_success(x):
+    # alternative succeeds; returns transformed value
+    return f"ok:{x}"
 
 
-def test_or_alternatives_success_order():
-    # primary fails, first OR succeeds
-    cluster = ClusterSpec(
-        primary=fail,
-        fallbacks=(),
-        ors=(alt_ok,),
-        primary_name="fail",
-        fallback_names=(),
-        or_names=("alt_ok",),
+def test_or_semantic_replay_first_success_wins():
+    # Strict pass: primary returns exception -> aborts strict
+    # Semantic replay: try primary, then OR; OR succeeds -> final value
+    sec = Section(
+        phase=Phase.SET,
+        clusters=((
+            StepToken(fail_exc, Relation.PRIMARY),
+            StepToken(alt_success, Relation.OR),
+        ),),
+        semantic=None,
     )
-    section = SectionSpec(phase=Phase.SET, clusters=(cluster,), principle=None)
-    base = build_codex_spec(())
-    spec = type(base)({Phase.SET: PhaseSpec(Phase.SET, (section,))}, False)
+    plans = compile_sections((sec,))
+    plan = plans[Phase.SET]
 
-    engine = CodexEngine(spec, CodexConfig(strict=True))
-    result = engine.run_phase(Phase.SET, "x")
-    assert result == "alt:x"
+    eng = Engine()
+    result, is_exc = eng.run(plan.pipeline, "X")
+    assert is_exc is False
+    assert result == "ok:X"

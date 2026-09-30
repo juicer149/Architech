@@ -1,26 +1,16 @@
-from codex.models import section_from_dsl
 from dsl import Section, Relation, StepToken
-from codex.semantics import Principle
+from codex.ir.phase import Phase
+from codex.ir.semantics import Principle
+from codex.compiler.compile import compile_sections
 
 
-def test_name_for_step_lambda_repr_used():
-    lam = lambda x: x  # lambda has __name__ = '<lambda>' but repr is acceptable
+def test_principle_normalized_from_string_in_compiler():
     sec = Section(
-        phase="SET",
-        clusters=((StepToken(lam, Relation.PRIMARY),),),
-        semantic=None,
-    )
-    spec = section_from_dsl(sec)
-    # Ensure the primary_name is populated; either '__name__' or repr
-    assert spec.clusters[0].primary_name in (getattr(lam, "__name__", None), repr(lam))
-
-
-def test_section_principle_normalized_from_string():
-    sec = Section(
-        phase="GET",
+        phase=Phase.GET,
         clusters=((StepToken(lambda x: x, Relation.PRIMARY),),),
         semantic="warn",
     )
-    spec = section_from_dsl(sec)
-    assert isinstance(spec.principle, Principle)
-    assert spec.principle.label == "warn"
+    plans = compile_sections((sec,))
+    plan = plans[Phase.GET]
+    assert isinstance(plan.principle, Principle)
+    assert plan.principle.label == "warn"

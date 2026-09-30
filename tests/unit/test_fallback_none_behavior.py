@@ -1,38 +1,49 @@
-from codex.engine import CodexEngine
-from codex.models import CodexConfig, build_codex_spec, Phase, SectionSpec, ClusterSpec, PhaseSpec
-from codex.semantics import Principle
-from codex.constants import DEFAULT_PRAXIS
+from dsl import Section, StepToken, Relation
+from codex.compiler.compile import compile_sections
+from codex.ir.phase import Phase
+from codex.runtime.engine import Engine
 
 
-def primary(x):
-    # Primary returns None (no change) when input is fixed
+def primary_after_fix(x):
+    # before fix: fail; after fix: None to keep current
     if x == "fixed":
         return None
     return ValueError("bad input")
 
 
-def fallback_fix(x):
-    # Fallback transforms current into a fixed value
+def fix_to_none(x):
+    # fallback fixes input to a value that causes primary to return None
+    # Engine should treat None as pass-through (keep current)
     return "fixed"
 
 
-def test_primary_none_after_fallback_keeps_fallback_output():
-    # Build SectionSpec with primary + fallback
-    cluster = ClusterSpec(
-        primary=primary,
-        fallbacks=(fallback_fix,),
-        ors=(),
-        primary_name="primary",
-        fallback_names=("fallback_fix",),
-        or_names=(),
+def primary_none(x):
+    # primary returns None -> pass-through of current
+    return None
+
+
+def test_fallback_then_primary_none_passes_through_current():
+    # Cluster: PRIMARY (fails semantically) + FALLBACK (produces fixed) then PRIMARY(None)
+    # Build as two clusters to express fallback then subsequent primary-none behavior.
+    sec = Section(
+        phase=Phase.SET,
+        clusters=(
+            (
+                StepToken(primary_after_fix, Relation.PRIMARY),
+                StepToken(fix_to_none, Relation.FALLBACK),
+            ),
+            (
+                StepToken(primary_none, Relation.PRIMARY),
+            ),
+        ),
+        semantic=None,
     )
-    section = SectionSpec(phase=Phase.SET, clusters=(cluster,), principle=None)
-    spec = build_codex_spec(())
-    # Manually inject our phase to avoid DSL dependency
-    spec = type(spec)({Phase.SET: PhaseSpec(Phase.SET, (section,))}, spec.has_principles)
 
-    engine = CodexEngine(spec, CodexConfig(strict=True))
+    plans = compile_sections((sec,))
+    plan = plans[Phase.SET]
 
-    result = engine.run_phase(Phase.SET, "bad")
-    # Expect the fallback output ("fixed") to be kept when primary returns None
+    eng = Engine()
+    result, is_exc = eng.run(plan.pipeline, "raw")
+    # After fallback fixes to "fixed", next PRIMARY returns None -> pass-through
+    assert is_exc is False
     assert result == "fixed"

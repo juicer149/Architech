@@ -45,7 +45,7 @@ class Relation(Enum):
         An alternative that is considered as “one of several acceptable
         options” (e.g. first success wins), again backend-defined.
     """
-
+    
     PRIMARY = auto()
     FALLBACK = auto()
     OR = auto()
@@ -92,7 +92,6 @@ Cluster = Tuple[StepToken, ...]
 
 # A sequence of clusters belonging to a single phase/section.
 Clusters = Tuple[Cluster, ...]
-
 
 @dataclass(frozen=True, slots=True)
 class Section:

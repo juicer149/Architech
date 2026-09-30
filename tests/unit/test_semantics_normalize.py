@@ -1,6 +1,6 @@
 import pytest
 
-from codex.semantics import normalize_principle, Principle
+from codex.ir.semantics import normalize_principle, Principle
 
 
 def test_normalize_none():

@@ -1,33 +1,39 @@
-from codex.engine import CodexEngine
-from codex.models import CodexConfig, build_codex_spec, Phase, SectionSpec, ClusterSpec, PhaseSpec
-from codex.semantics import Principle, Praxis
+from dsl import Section, StepToken, Relation
+from codex.compiler.compile import compile_sections
+from codex.ir.phase import Phase
+from codex.ir.output import Output, RETURN, DROP
+from codex.runtime.engine import Engine
 
 
-def fail(x):
-    return ValueError("msg")
+def good(x):
+    return f"val:{x}"
 
 
-def test_print_only_no_raise_and_logs_messages():
-    messages = []
-    def logger(m: str):
-        messages.append(m)
+def bad(x):
+    return ValueError("oops")
 
-    principle = Principle("warn", Praxis(timing=False, action=False))
 
-    cluster = ClusterSpec(
-        primary=fail,
-        fallbacks=(),
-        ors=(),
-        primary_name="fail",
-        fallback_names=(),
-        or_names=(),
+def test_output_routing_return_vs_drop_exception():
+    # Section with two clusters; attach semantics to route values and exceptions.
+    # - write (value) -> RETURN
+    # - exc (exception) -> DROP (simulated via is_exception True)
+    sec = Section(
+        phase=Phase.SET,
+        clusters=(
+            (StepToken(good, Relation.PRIMARY),),
+            (StepToken(bad, Relation.PRIMARY),),
+        ),
+        semantic=(Output(dest=RETURN), Output(is_exception=True, dest=DROP)),
     )
-    section = SectionSpec(phase=Phase.SET, clusters=(cluster,), principle=principle)
-    base = build_codex_spec(())
-    spec = type(base)({Phase.SET: PhaseSpec(Phase.SET, (section,))}, True)
 
-    engine = CodexEngine(spec, CodexConfig(strict=None, logger=logger))
+    plans = compile_sections((sec,))
+    plan = plans[Phase.SET]
+    eng = Engine()
 
-    out = engine.run_phase(Phase.SET, "x")
-    assert out == "x"
-    assert messages and any("warn" in m and "msg" in m for m in messages)
+    # Run engine to get final (result, is_exc)
+    result, is_exc = eng.run(plan.pipeline, "X")
+
+    # Routing policy: if is_exc, this would be dropped; else returned.
+    # Here we assert the flags and value; actual descriptor routing lives elsewhere.
+    assert is_exc is True
+    assert isinstance(result, ValueError)

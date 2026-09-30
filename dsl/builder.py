@@ -132,6 +132,7 @@ class StepChain:
         object.__setattr__(self, "_clusters", (first_cluster,))
         object.__setattr__(self, "_semantic", None)
 
+
     # ------------------------------------------------------------------
     # Internal constructor for persistence
     # ------------------------------------------------------------------
@@ -225,11 +226,33 @@ class StepChain:
 
     def __matmul__(self, semantic: Any) -> "StepChain":
         """
-        Attach an opaque semantic token to this chain.
+        Attach semantic metadata.
 
-        The semantic value will be stored on the resulting Section.
+        If both current and incoming semantics exist, merge them into a tuple.
+        This enables chaining like:
+            (SECTION >> f1 >> f2) @ sem1 @ sem2
+        Real showcase:
+            SET >> f1 >> f2 @ {"timeout": 30} @ {"retries": 3}
+        Codex example:
+            SET >> f1 >> f2 @ ERRORSEMANTICS @ WRITINGSEMANTICS
         """
-        return StepChain._from_state(self.phase_token, self._clusters, semantic)
+        if semantic is None:
+            return self
+
+        current = self._semantic
+        if current is None:
+            merged = semantic
+        else:
+            def to_items(x: Any) -> tuple[Any, ...]:
+                if x is None:
+                    return ()
+                if isinstance(x, (list, tuple, set)):
+                    return tuple(x)
+                return (x,)
+
+            merged = to_items(current) + to_items(semantic)
+
+        return StepChain._from_state(self.phase_token, self._clusters, merged)
 
     # ------------------------------------------------------------------
     # Materialization
