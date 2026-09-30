@@ -126,11 +126,16 @@ class Codex:
             return self
         eng = self._get_engine()
         internal = inst.__dict__.get(self._attr(), self._default)
+        if eng.fast_get is not None:
+            return eng.run_fast(eng.fast_get, Phase.GET, internal)
         return eng.run_phase(Phase.GET, internal)
 
     def __set__(self, inst, value):
         eng = self._get_engine()
-        res = eng.run_phase(Phase.SET, value)
+        if eng.fast_set is not None:
+            res = eng.run_fast(eng.fast_set, Phase.SET, value)
+        else:
+            res = eng.run_phase(Phase.SET, value)
         inst.__dict__[self._attr()] = res
 
     # ---------------- engine ---------------------

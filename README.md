@@ -21,8 +21,10 @@ A step is a plain function that takes the current value and returns:
 | a value | success, value replaced |
 | an `Exception` instance | soft failure; the pipeline decides what happens |
 
-Raising (instead of returning) an exception is treated as a bug and
-propagates immediately.
+Returning the exception is the preferred way to fail: it is cheaper than
+raising. A step may also raise; the exception is caught and handled the
+same way, so severity still decides the outcome. Only `KeyboardInterrupt`
+and `SystemExit` are never caught.
 
 ```python
 def upper(v):

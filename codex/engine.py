@@ -4,10 +4,18 @@
 """
 CodexEngine — strict-first deterministic executor.
 
+STEP CONTRACT
+-------------
+A step returns None (unchanged), a new value, or an Exception instance
+(soft failure). Returning is the fast, preferred way to fail. A step may
+also *raise* an Exception; it is caught and treated exactly like a
+returned one, so severity still decides what happens. BaseExceptions
+that are not Exceptions (KeyboardInterrupt, SystemExit) always propagate.
+
 STRICT MODE
 -----------
 Pure Python execution. No semantics, no queues.
-If a step returns an Exception → raise it immediately.
+A failing step (returned or raised) → the exception is raised as-is.
 
 SEMANTIC MODE
 -------------
@@ -19,7 +27,12 @@ SEMANTIC MODE
        None  → codex-level
 4. Queues flushed deterministically
 
-This engine has *zero overhead* in strict-mode beyond Python calls.
+FAST PATH
+---------
+Phases whose clusters are all primary-only are flattened to a tuple of
+steps at construction. The happy path runs as a plain loop; the first
+failure re-runs the whole phase through run_phase, so results are
+identical to the full engine.
 """
 
 from __future__ import annotations
@@ -36,6 +49,18 @@ from .models import (
 )
 from .constants import DEFAULT_PRAXIS
 from .semantics import Principle
+
+
+# -------------------------------------------------------------------
+# Step invocation
+# -------------------------------------------------------------------
+
+def _call(fn: Callable[[Any], Any], value: Any) -> Any:
+    """Run a step; a raised Exception is returned like a soft failure."""
+    try:
+        return fn(value)
+    except Exception as exc:
+        return exc
 
 
 # -------------------------------------------------------------------
@@ -132,13 +157,55 @@ class CodexEngine:
     Executes CodexSpec using strict-first logic.
     """
 
-    __slots__ = ("spec", "strict", "logger")
+    __slots__ = ("spec", "strict", "logger", "fast_set", "fast_get")
 
     def __init__(self, spec: CodexSpec, config: CodexConfig):
         self.spec = spec
         self.strict = self._resolve_strict(config.strict)
         # pass logger down to ExecutionContext
         self.logger = getattr(config, "logger", None)
+        self.fast_set = self._fast_steps(Phase.SET)
+        self.fast_get = self._fast_steps(Phase.GET)
+
+    # --------------------------------------------------------------
+    # Fast path
+    # --------------------------------------------------------------
+
+    def _fast_steps(self, phase: Phase) -> Optional[tuple]:
+        """
+        Flatten a phase into a tuple of steps when every cluster is
+        primary-only (no fallbacks, no alternatives). Returns None when
+        the phase needs the full engine, and () when the phase is empty.
+        """
+        p = self.spec.phases.get(phase)
+        if not p:
+            return ()
+        steps = []
+        for sec in p.sections:
+            for cluster in sec.clusters:
+                if cluster.fallbacks or cluster.ors:
+                    return None
+                steps.append(cluster.primary)
+        return tuple(steps)
+
+    def run_fast(self, steps: tuple, phase: Phase, value: Any) -> Any:
+        """
+        Happy path without context or flushing. On the first soft failure
+        the whole phase is re-run by the full engine, which then applies
+        strict or semantic handling exactly as run_phase does.
+        """
+        current = value
+        for step in steps:
+            try:
+                out = step(current)
+            except Exception:
+                return self.run_phase(phase, value)
+            if out is None:
+                continue
+            if isinstance(out, BaseException):
+                return self.run_phase(phase, value)
+            current = out
+        return current
 
     # --------------------------------------------------------------
     # Strict-mode detection
@@ -242,7 +309,7 @@ class CodexEngine:
 
         # --- primary only --------------------------------------------------
         if not fallbacks and not ors:
-            out = primary(current)
+            out = _call(primary, current)
 
             if out is None:
                 return current
@@ -254,7 +321,7 @@ class CodexEngine:
 
         # --- primary + fallbacks -------------------------------------------
         if fallbacks:
-            out = primary(current)
+            out = _call(primary, current)
 
             if not isinstance(out, BaseException):
                 # success
@@ -263,14 +330,14 @@ class CodexEngine:
             last_exc: BaseException = out
             # try fallbacks one by one
             for fb in fallbacks:
-                fixed = fb(current)
+                fixed = _call(fb, current)
 
                 if isinstance(fixed, BaseException):
                     last_exc = fixed
                     continue
 
                 # fallback success → retry primary with fixed value
-                out2 = primary(fixed)
+                out2 = _call(primary, fixed)
 
                 if isinstance(out2, BaseException):
                     last_exc = out2
@@ -289,7 +356,7 @@ class CodexEngine:
         last_exc: BaseException | None = None
 
         for fn in (primary, *ors):
-            out = fn(current)
+            out = _call(fn, current)
 
             if out is None:
                 # treat None as “no change but success”
@@ -356,11 +423,7 @@ class CodexEngine:
         fns = (cluster.primary, *cluster.fallbacks, *cluster.ors)
 
         for fn in fns:
-            try:
-                out = fn(current)
-            except Exception as hard:
-                # hard errors are not wrapped; surfaced immediately
-                raise hard
+            out = _call(fn, current)
 
             if isinstance(out, BaseException):
                 last_exc = out
@@ -377,7 +440,7 @@ class CodexEngine:
         record = Violation(principle, last_exc, phase, sec_idx, c_idx)
 
         if timing is True:
-            ExecutionContext._flush([record])
+            ExecutionContext._flush([record], self.logger)
         elif timing is False:
             ctx.phase_q.append(record)
         else:
