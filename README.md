@@ -126,9 +126,11 @@ Python's operator precedence is fixed, so:
 ## Performance
 
 Valid data is assumed to be the common case, so that is what is fast.
-A phase made only of plain steps is flattened into a single loop when
-the class is defined; a valid assignment costs well under a
-microsecond, slightly faster than pydantic's `validate_assignment`.
+A phase made only of plain steps is flattened into a single loop the
+first time the attribute is used; after that a valid assignment costs
+well under a microsecond, slightly faster than pydantic's
+`validate_assignment` for a single field. (Pydantic's strength is
+parsing whole models from dicts or JSON, which this does not measure.)
 
 Failures cost more on purpose. The phase is re-run through the full
 engine to apply severity, fallbacks and alternatives and to build the
@@ -186,7 +188,7 @@ valid value reaches the backend, an invalid one raises and never does.
 - `dsl/`: syntax only (phase tokens and the operators above), no semantics
 - `codex/`: turns DSL expressions into a spec and runs it as a descriptor
 - `stdlib/`: validators, transformers and ready-made rules (`IS_INT`, `CLEAN_EMAIL`, …)
-- `scripts/`: benchmark against plain Python, line counter
+- `scripts/`: benchmarks and a line counter
 - `.history/`: notes per version
 
 ## Status
@@ -194,7 +196,7 @@ valid value reaches the backend, an invalid one raises and never does.
 An experiment, not a library to depend on. There are no users and no
 stability promises.
 
-- `main` is v3: works, 43 tests, pure standard library.
+- `main` is v3: works, 49 tests, pure standard library.
 - `wip/v4` is an unfinished redesign: compiler → IR → runtime layers, a
   `DELETE` phase, nested rules, and output routing (see Direction). The
   compiler and engine run; the package does not import yet.
@@ -204,10 +206,15 @@ The ideas started as `meta/` inside
 
 ## Running
 
+There is no package to install; run from the repository root.
+
 ```bash
-make install
+make install       # .venv with pytest
 make test
-make bench
+make bench-attr    # attribute benchmark (pip install pydantic in .venv to include it)
+make bench         # engine-level benchmark
+
+PYTHONPATH=. .venv/bin/python your_script.py
 ```
 
 ## License

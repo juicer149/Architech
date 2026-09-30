@@ -40,7 +40,6 @@ Makefile text eol=lf
 # Ignore whitespace-only diffs for these
 # (Common for notes, experiments)
 # ------------------------------
-*.md     -diff
 
 # ------------------------------
 # Binary formats
