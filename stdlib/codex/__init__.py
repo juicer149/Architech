@@ -79,8 +79,7 @@ __all__ = [
     "IGNORE_P",
     # composite stdlib codices
     "IS_INT",
-    "POS_INT",
-    "POSITIVE",          # alias, see below
+    "POSITIVE",
     "IN_RANGE",
     "NON_EMPTY_STR",
     "NORMALIZED_TEXT",
