@@ -128,15 +128,26 @@ Python's operator precedence is fixed, so:
 Valid data is assumed to be the common case, so that is what is fast.
 A phase made only of plain steps is flattened into a single loop when
 the class is defined; a valid assignment costs well under a
-microsecond, in the same range as pydantic's `validate_assignment`.
+microsecond, slightly faster than pydantic's `validate_assignment`.
 
 Failures cost more on purpose. The phase is re-run through the full
 engine to apply severity, fallbacks and alternatives and to build the
 message. Returning an exception from a step is cheaper than raising
 one, which is why returning is the convention.
 
+`make bench-attr` (Python 3.12, one e-mail field: strip, lowercase, check `@`):
+
 ```
-(paste the output of `make bench-attr` here)
+plain attribute (no validation)             0.03 µs      1.0x
+hand-written @property                      0.19 µs      5.5x
+pydantic validate_assignment                1.00 µs     28.7x
+Architech strict                            0.70 µs     20.1x
+Architech @ ERROR                           0.68 µs     19.5x
+Architech @ WARN                            0.70 µs     20.0x
+@property, invalid (raises)                 0.48 µs     13.7x
+pydantic, invalid (raises)                  1.48 µs     42.7x
+Architech @ ERROR, invalid (raises)         7.28 µs    209.4x
+Architech @ WARN, invalid (prints)          6.80 µs    195.8x
 ```
 
 ## Direction
